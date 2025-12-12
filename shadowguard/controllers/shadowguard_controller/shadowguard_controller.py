@@ -463,3 +463,117 @@ class ShadowGuardSLAM:
             self.rl_agent.end_episode()
             self.rl_episode_start_time = current_time
             self.rl_visited_cells.clear()
+    def update_display_map(self):
+        """Update the display map with sharp edges using morphological operations"""
+        with self.map_lock:
+            # Start with light gray background
+            self.display_map.fill(220)
+            
+            # Process wall map to get sharp edges
+            if np.any(self.wall_map > 0):
+                # Apply threshold
+                _, binary_walls = cv2.threshold(self.wall_map, 50, 255, cv2.THRESH_BINARY)
+                
+                # Apply morphological operations for cleaner edges
+                kernel = np.ones((3, 3), np.uint8)
+                
+                # Close small gaps
+                closed = cv2.morphologyEx(binary_walls, cv2.MORPH_CLOSE, kernel)
+                
+                # Find edges using Canny
+                edges = cv2.Canny(closed, 50, 150)
+                
+                # Dilate edges slightly for visibility
+                edges = cv2.dilate(edges, kernel, iterations=1)
+                
+                # Draw walls in blue
+                wall_mask = closed > 0
+                self.display_map[wall_mask] = [180, 180, 255]  # Light blue
+                
+                # Draw edges in dark blue
+                edge_mask = edges > 0
+                self.display_map[edge_mask] = [100, 100, 200]  # Dark blue
+            
+            # Process obstacle map for furniture/boxes
+            if np.any(self.obstacle_map > 0):
+                _, binary_obstacles = cv2.threshold(self.obstacle_map, 50, 255, cv2.THRESH_BINARY)
+                
+                # Apply morphological operations
+                kernel = np.ones((3, 3), np.uint8)
+                closed_obs = cv2.morphologyEx(binary_obstacles, cv2.MORPH_CLOSE, kernel)
+                
+                # Find contours for filled objects
+                contours, _ = cv2.findContours(closed_obs, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                
+                # Draw filled contours for furniture
+                for contour in contours:
+                    if cv2.contourArea(contour) > 10:  # Filter small noise
+                        # Create mask for this object
+                        obj_mask = np.zeros((self.map_size, self.map_size), dtype=np.uint8)
+                        cv2.drawContours(obj_mask, [contour], -1, 255, -1)
+                        
+                        # Draw object in brown
+                        obj_mask_bool = obj_mask > 0
+                        self.display_map[obj_mask_bool] = [150, 120, 90]  # Brown
+                        
+                        # Draw outline in dark brown
+                        cv2.drawContours(self.display_map, [contour], -1, [100, 80, 60], 2)
+    
+    def autonomous_patrol(self):
+        """Fast autonomous patrolling with obstacle avoidance and RL integration"""
+        robot_x, robot_y, robot_theta = self.get_robot_pose()
+        
+        if self.obstacle_detected:
+            self.patrol_state = 'avoiding'
+            self.avoid_timer = 15
+            
+            # Move backward and turn (override RL during obstacle avoidance)
+            self.left_motor.setVelocity(-2.5)
+            self.right_motor.setVelocity(-1.5)
+        elif self.patrol_state == 'avoiding' and self.avoid_timer > 0:
+            self.avoid_timer -= 1
+            if self.avoid_timer <= 8:
+                # Sharp turn
+                self.left_motor.setVelocity(3.0)
+                self.right_motor.setVelocity(-3.0)
+        elif self.patrol_state == 'avoiding':
+            # Resume exploration
+            self.patrol_state = 'exploring'
+            # Let RL choose new strategy after avoidance
+            self.current_rl_state = None
+        else:
+            # Normal exploration with RL guidance
+            self.patrol_state = 'exploring'
+            
+            # Update RL agent
+            self.rl_update()
+            
+            # Simple wander behavior with RL-adjusted parameters
+            base_speed = self.robot_speed
+            angle_diff = self.wander_angle - robot_theta
+            
+            # Normalize angle
+            while angle_diff > math.pi:
+                angle_diff -= 2 * math.pi
+            while angle_diff < -math.pi:
+                angle_diff += 2 * math.pi
+            
+            turn_gain = 0.8
+            angular_speed = turn_gain * angle_diff
+            
+            left_speed = base_speed - angular_speed
+            right_speed = base_speed + angular_speed
+            
+            # Clamp speeds
+            max_speed = 3.5
+            left_speed = max(-max_speed, min(max_speed, left_speed))
+            right_speed = max(-max_speed, min(max_speed, right_speed))
+            
+            self.left_motor.setVelocity(left_speed)
+            self.right_motor.setVelocity(right_speed)
+            
+            # Add trajectory point
+            with self.trajectory_lock:
+                self.trajectory.append((robot_x, robot_y))
+                if len(self.trajectory) > 500:
+                    self.trajectory.pop(0)
