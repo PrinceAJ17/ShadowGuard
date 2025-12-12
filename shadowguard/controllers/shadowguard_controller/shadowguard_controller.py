@@ -945,3 +945,17 @@ class ShadowGuardSLAM:
                 time.sleep(0.1)
         
         cv2.destroyAllWindows()
+    def update_camera_display(self):
+        """Update Webots camera display"""
+        img = self.camera.getImage()
+        if img:
+            self.camera_display.imageNew(img, Display.BGRA, 
+                                        self.camera.getWidth(), 
+                                        self.camera.getHeight())
+            
+            if self.intruder_detected:
+                self.camera_display.setColor(0xFF0000)
+                w = self.camera_display.getWidth()
+                h = self.camera_display.getHeight()
+                for i in range(3):
+                    self.camera_display.drawRectangle(i, i, w-2*i, h-2*i)
