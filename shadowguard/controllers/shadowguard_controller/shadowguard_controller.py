@@ -670,3 +670,278 @@ class ShadowGuardSLAM:
         
         self.left_motor.setVelocity(left_speed)
         self.right_motor.setVelocity(right_speed)
+
+    def display_rl_dashboard(self):
+        """Display RL learning dashboard in separate window"""
+        dashboard = np.ones((600, 800, 3), dtype=np.uint8) * 240  # Light gray background
+        
+        # Title
+        cv2.putText(dashboard, "ShadowGuard RL Learning Dashboard", (50, 50),
+                   cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 0, 0), 2)
+        
+        # RL Statistics
+        stats_y = 100
+        cv2.putText(dashboard, f"Episode: {self.rl_agent.episode_count}", (50, stats_y),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+        cv2.putText(dashboard, f"Total Reward: {self.rl_agent.total_rewards:.1f}", (50, stats_y + 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+        cv2.putText(dashboard, f"Exploration Rate (ε): {self.rl_agent.epsilon:.3f}", (50, stats_y + 60),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+        cv2.putText(dashboard, f"Current Action: {self.rl_agent.action_meanings[self.current_rl_action] if self.current_rl_action is not None else 'None'}", 
+                   (50, stats_y + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 100, 200), 2)
+        
+        # Q-values bar chart
+        if self.rl_q_values:
+            chart_y = 200
+            chart_height = 150
+            chart_width = 600
+            max_q = max(abs(min(self.rl_q_values)), abs(max(self.rl_q_values))) + 0.1
+            
+            
+            
+            for i, q_val in enumerate(self.rl_q_values):
+                bar_width = 30
+                bar_x = 50 + i * 40
+                bar_height = int((q_val / max_q) * chart_height / 2)
+                
+                # Color based on value
+                if q_val >= 0:
+                    color = (0, int(200 * (q_val/max_q)), 0)  # Green for positive
+                else:
+                    color = (0, 0, int(200 * (-q_val/max_q)))  # Red for negative
+                
+                # Draw bar
+                bar_y = chart_y + chart_height//2
+                cv2.rectangle(dashboard, 
+                            (bar_x, bar_y - bar_height),
+                            (bar_x + bar_width, bar_y),
+                            color, -1)
+                
+                # Draw border
+                cv2.rectangle(dashboard, 
+                            (bar_x, bar_y - bar_height),
+                            (bar_x + bar_width, bar_y),
+                            (50, 50, 50), 1)
+                
+                # Label
+                cv2.putText(dashboard, f"{i}", (bar_x + 5, bar_y + 15),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+                cv2.putText(dashboard, f"{q_val:.2f}", (bar_x, bar_y - bar_height - 5),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+        
+        # Reward history graph
+        if self.rl_rewards_history:
+            graph_y = 400
+            graph_height = 150
+            graph_width = 600
+            
+            cv2.putText(dashboard, "Reward History (Last 100 steps):", (50, graph_y - 10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+            
+            # Draw grid
+            for i in range(0, 11):
+                y = graph_y + int(i * graph_height / 10)
+                cv2.line(dashboard, (50, y), (50 + graph_width, y), (200, 200, 200), 1)
+            
+            # Draw reward line
+            points = []
+            max_reward = max(self.rl_rewards_history) if self.rl_rewards_history else 1
+            min_reward = min(self.rl_rewards_history) if self.rl_rewards_history else 0
+            
+            for i, reward in enumerate(self.rl_rewards_history):
+                x = 50 + int(i * graph_width / len(self.rl_rewards_history))
+                if max_reward != min_reward:
+                    y = graph_y + graph_height - int((reward - min_reward) / (max_reward - min_reward) * graph_height)
+                else:
+                    y = graph_y + graph_height // 2
+                points.append((x, y))
+            
+            for i in range(1, len(points)):
+                cv2.line(dashboard, points[i-1], points[i], (0, 100, 200), 2)
+            
+            # Draw zero line
+            if min_reward < 0 < max_reward:
+                zero_y = graph_y + graph_height - int((0 - min_reward) / (max_reward - min_reward) * graph_height)
+                cv2.line(dashboard, (50, zero_y), (50 + graph_width, zero_y), (100, 100, 100), 1)
+        
+        # Legend
+        legend_y = 570
+        cv2.putText(dashboard, "Action Legend:", (50, legend_y),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+        
+        for i, action_name in enumerate(self.rl_agent.action_meanings):
+            if i < 3:  # First column
+                cv2.putText(dashboard, f"{i}: {action_name}", (50, legend_y + 25 + i*20),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            else:  # Second column
+                cv2.putText(dashboard, f"{i}: {action_name}", (300, legend_y + 25 + (i-3)*20),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        
+        # Status
+        status = "LEARNING" if not self.intruder_detected else "TRACKING - RL PAUSED"
+        
+        
+        cv2.imshow(self.rl_window_name, dashboard)
+        
+    def display_map_thread(self):
+        """Display thread for OpenCV windows - Thread-safe version"""
+        cv2.namedWindow(self.map_window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(self.map_window_name, 700, 700)
+        
+        if self.show_rl:
+            cv2.namedWindow(self.rl_window_name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(self.rl_window_name, 800, 600)
+        
+        while self.show_map:
+            try:
+                # Update display map
+                self.update_display_map()
+                
+                # Create a copy of the display map to draw on
+                with self.map_lock:
+                    display_copy = self.display_map.copy()
+                
+                # Get thread-safe copies of trajectory data
+                with self.trajectory_lock:
+                    trajectory_copy = list(self.trajectory)
+                
+                with self.intruder_data_lock:
+                    intruder_detected = self.intruder_detected
+                    intruder_position = self.intruder_position
+                    intruder_trajectory_copy = list(self.intruder_trajectory)
+                
+                # Draw RL visited cells
+                for cell_x, cell_y in self.rl_visited_cells:
+                    map_x = int(self.map_center + (cell_x - 10) * (12/20) / self.map_resolution)
+                    map_y = int(self.map_center - (cell_y - 10) * (10/20) / self.map_resolution)
+                    size = int(0.5 / self.map_resolution)
+                    cv2.rectangle(display_copy, 
+                                (map_x - size//2, map_y - size//2),
+                                (map_x + size//2, map_y + size//2),
+                                (200, 255, 200), 1)
+                
+                # Draw robot trajectory (green)
+                if len(trajectory_copy) > 1:
+                    points = []
+                    for pos in trajectory_copy:
+                        mx, my = self.world_to_map(pos[0], pos[1])
+                        points.append((mx, my))
+                    
+                    # Draw as connected line
+                    for i in range(len(points) - 1):
+                        cv2.line(display_copy, points[i], points[i+1], (0, 200, 0), 2)
+                
+                # Draw robot position
+                robot_x, robot_y, robot_theta = self.get_robot_pose()
+                robot_mx, robot_my = self.world_to_map(robot_x, robot_y)
+                
+                # Draw robot as green circle with direction
+                cv2.circle(display_copy, (robot_mx, robot_my), 8, (0, 255, 0), -1)
+                cv2.circle(display_copy, (robot_mx, robot_my), 8, (0, 100, 0), 2)  # Outline
+                
+                # Direction arrow
+                arrow_len = 15
+                end_x = int(robot_mx + arrow_len * math.cos(robot_theta))
+                end_y = int(robot_my - arrow_len * math.sin(robot_theta))
+                cv2.arrowedLine(display_copy, (robot_mx, robot_my), (end_x, end_y), 
+                              (0, 150, 0), 2, tipLength=0.3)
+                
+                # Draw RL action indicator
+                if self.current_rl_action is not None and not intruder_detected:
+                    action_text = f"RL: {self.rl_agent.action_meanings[self.current_rl_action]}"
+                    cv2.putText(display_copy, action_text, (robot_mx + 20, robot_my - 20),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 100, 200), 2)
+                
+                # Draw intruder if detected
+                if intruder_detected and intruder_position:
+                    # Draw trajectory (orange)
+                    if len(intruder_trajectory_copy) > 1:
+                        for i in range(len(intruder_trajectory_copy) - 1):
+                            x1, y1 = self.world_to_map(intruder_trajectory_copy[i][0], 
+                                                      intruder_trajectory_copy[i][1])
+                            x2, y2 = self.world_to_map(intruder_trajectory_copy[i+1][0], 
+                                                      intruder_trajectory_copy[i+1][1])
+                            cv2.line(display_copy, (x1, y1), (x2, y2), (0, 100, 255), 2)
+                    
+                    # Draw current position
+                    intr_mx, intr_my = self.world_to_map(intruder_position[0], 
+                                                        intruder_position[1])
+                    
+                    # Red circle for intruder
+                    cv2.circle(display_copy, (intr_mx, intr_my), 10, (0, 0, 255), -1)
+                    cv2.circle(display_copy, (intr_mx, intr_my), 10, (0, 0, 100), 2)  # Outline
+                    
+                    cv2.putText(display_copy, "INTRUDER", (intr_mx + 12, intr_my - 5),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                
+                # Add grid lines for scale (1 meter)
+                grid_spacing = int(1.0 / self.map_resolution)
+                grid_color = (200, 200, 200)
+                for i in range(0, self.map_size, grid_spacing):
+                    cv2.line(display_copy, (i, 0), (i, self.map_size), grid_color, 1)
+                    cv2.line(display_copy, (0, i), (self.map_size, i), grid_color, 1)
+                
+                # Add status overlay
+                overlay = display_copy.copy()
+                cv2.rectangle(overlay, (5, 5), (350, 120), (255, 255, 255), -1)
+                cv2.addWeighted(overlay, 0.7, display_copy, 0.3, 0, display_copy)
+                
+                # Status text
+                status = "TRACKING INTRUDER" if intruder_detected else f"PATROL: {self.patrol_state.upper()}"
+                cv2.putText(display_copy, f"Status: {status}", (10, 30),
+                           cv2.FONT_HERSHEY_DUPLEX, 0.7, (0, 0, 0), 1)
+                cv2.putText(display_copy, f"Time: {self.robot.getTime():.1f}s", (10, 60),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+                cv2.putText(display_copy, f"Position: ({robot_x:.1f}, {robot_y:.1f})", (10, 85),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+                cv2.putText(display_copy, f"RL Episode: {self.rl_agent.episode_count}", (10, 110),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 100, 200), 1)
+                
+                # Scale bar
+                scale_m = 5
+                scale_px = int(scale_m / self.map_resolution)
+                bar_x = self.map_size - 150
+                bar_y = self.map_size - 30
+                cv2.line(display_copy, (bar_x, bar_y), (bar_x + scale_px, bar_y), (0, 0, 0), 3)
+                cv2.putText(display_copy, f"{scale_m}m", (bar_x + scale_px//2 - 15, bar_y - 10),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+                
+                # Legend
+                cv2.putText(display_copy, "Legend:", (self.map_size - 150, 30),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+                cv2.rectangle(display_copy, (self.map_size - 150, 40), (self.map_size - 130, 55), 
+                            (180, 180, 255), -1)  # Wall
+                cv2.putText(display_copy, "Walls", (self.map_size - 125, 52),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                cv2.rectangle(display_copy, (self.map_size - 150, 60), (self.map_size - 130, 75),
+                            (150, 120, 90), -1)  # Furniture
+                cv2.putText(display_copy, "Furniture", (self.map_size - 125, 72),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                cv2.rectangle(display_copy, (self.map_size - 150, 80), (self.map_size - 130, 95),
+                            (200, 255, 200), -1)  # RL visited
+                cv2.putText(display_copy, "RL Visited", (self.map_size - 125, 92),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                
+                # Show map
+                cv2.imshow(self.map_window_name, display_copy)
+                
+                # Show RL dashboard if enabled
+                if self.show_rl:
+                    self.display_rl_dashboard()
+                
+                # Check for ESC key
+                key = cv2.waitKey(50) & 0xFF
+                if key == 27:  # ESC
+                    self.show_map = False
+                    self.show_rl = False
+                    break
+                elif key == ord('r'):  # Toggle RL dashboard
+                    self.show_rl = not self.show_rl
+                    if not self.show_rl:
+                        cv2.destroyWindow(self.rl_window_name)
+                    
+            except Exception as e:
+                print(f"Display error: {e}")
+                time.sleep(0.1)
+        
+        cv2.destroyAllWindows()
