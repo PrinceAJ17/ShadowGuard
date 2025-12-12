@@ -161,3 +161,180 @@ class QLearningAgent:
                 print(f"Q-table loaded (Episode {self.episode_count})")
         except Exception as e:
             print(f"Error loading Q-table: {e}")
+
+class ShadowGuardSLAM:
+    def __init__(self):
+        self.robot = Robot()
+        self.timestep = int(self.robot.getBasicTimeStep())
+        
+        # Initialize devices
+        self.camera = self.robot.getDevice('rgb_camera')
+        self.camera.enable(self.timestep)
+        self.camera.recognitionEnable(self.timestep)
+        
+        self.lidar = self.robot.getDevice('lidar')
+        self.lidar.enable(self.timestep)
+        
+        self.gps = self.robot.getDevice('gps')
+        self.gps.enable(self.timestep)
+        
+        self.compass = self.robot.getDevice('compass')
+        self.compass.enable(self.timestep)
+        
+        self.left_motor = self.robot.getDevice('left_motor')
+        self.right_motor = self.robot.getDevice('right_motor')
+        self.left_motor.setPosition(float('inf'))
+        self.right_motor.setPosition(float('inf'))
+        self.left_motor.setVelocity(0)
+        self.right_motor.setVelocity(0)
+        
+        # Displays
+        self.camera_display = self.robot.getDevice('camera_display')
+        
+        # Emitter
+        self.emitter = self.robot.getDevice('emitter')
+        if self.emitter:
+            self.emitter.setChannel(1)
+        
+        # Fast, accurate SLAM Map
+        self.map_size = 800  # Higher resolution for sharp edges
+        self.map_resolution = 0.02  # 2cm per pixel
+        self.map_center = self.map_size // 2
+        
+        # Map layers with thread locks
+        self.map_lock = threading.Lock()
+        self.obstacle_map = np.zeros((self.map_size, self.map_size), dtype=np.uint8)
+        self.wall_map = np.zeros((self.map_size, self.map_size), dtype=np.uint8)
+        
+        # RL Map Layer (for visualization)
+        self.rl_map = np.zeros((self.map_size, self.map_size, 3), dtype=np.uint8)
+        
+        # Display map (color)
+        self.display_map = np.ones((self.map_size, self.map_size, 3), dtype=np.uint8) * 220  # Light gray
+        
+        # Thread-safe robot data
+        self.trajectory = []
+        self.trajectory_lock = threading.Lock()
+        self.robot_speed = 3.0
+        
+        # Thread-safe intruder data
+        self.intruder_data_lock = threading.Lock()
+        self.intruder_detected = False
+        self.intruder_position = None
+        self.intruder_trajectory = []
+        
+        # Patrol parameters
+        self.patrol_state = 'exploring'
+        self.obstacle_detected = False
+        self.avoid_timer = 0
+        self.wander_angle = 0
+        self.last_turn_time = 0
+        
+        # Fast mapping settings
+        self.obstacle_threshold = 0.5
+        self.wall_distance = 1.8
+        self.map_update_counter = 0
+        
+        # Reinforcement Learning Agent
+        state_space_size = 4 * 4 * 4 * 2 * 2  # 4x4 grid * 4 directions * 2 intruder states * 2 obstacle states
+        action_space_size = 6  # 6 different patrol strategies
+        self.rl_agent = QLearningAgent(state_space_size, action_space_size)
+        
+        # RL state tracking
+        self.current_rl_state = None
+        self.current_rl_action = None
+        self.last_rl_update_time = 0
+        self.rl_action_duration = 0
+        self.rl_episode_start_time = 0
+        
+        # RL Visualization data
+        self.rl_q_values = []
+        self.rl_rewards_history = []
+        self.rl_visited_cells = set()
+        
+        # OpenCV windows
+        self.map_window_name = "ShadowGuard - Accurate SLAM Map"
+        self.rl_window_name = "RL Learning Dashboard"
+        self.show_map = True
+        self.show_rl = True
+        self.map_image = None
+        
+        print("ShadowGuard Fast SLAM Controller with RL Initialized")
+        print("Mapping: Fast and accurate with sharp edges")
+        print("Robot Speed: Normal (3.0 m/s)")
+        print(f"RL Agent: {state_space_size} states, {action_space_size} actions")
+        
+    def world_to_map(self, x, y):
+        """Fast coordinate conversion"""
+        map_x = int(self.map_center + x / self.map_resolution)
+        map_y = int(self.map_center - y / self.map_resolution)
+        return np.clip(map_x, 0, self.map_size-1), np.clip(map_y, 0, self.map_size-1)
+    
+    def get_robot_pose(self):
+        """Get current robot position and orientation"""
+        pos = self.gps.getValues()
+        compass_vals = self.compass.getValues()
+        angle = math.atan2(compass_vals[0], compass_vals[1])
+        return pos[0], pos[1], angle
+    
+    def fast_mapping(self, robot_x, robot_y, robot_theta, ranges):
+        """Fast and accurate mapping with line-based obstacle detection"""
+        with self.map_lock:
+            robot_mx, robot_my = self.world_to_map(robot_x, robot_y)
+            
+            # Track visited cells for RL
+            cell_x = int((robot_x + 6) / 12 * 20)  # 20x20 grid for RL visualization
+            cell_y = int((robot_y + 5) / 10 * 20)
+            self.rl_visited_cells.add((cell_x, cell_y))
+            
+            # Process LiDAR points
+            num_points = len(ranges)
+            for i, r in enumerate(ranges):
+                if r < self.wall_distance:  # Only map close objects for clarity
+                    angle = robot_theta + (i / num_points) * 2 * math.pi - math.pi
+                    obs_x = robot_x + r * math.cos(angle)
+                    obs_y = robot_y + r * math.sin(angle)
+                    
+                    # Convert to map coordinates
+                    obs_mx, obs_my = self.world_to_map(obs_x, obs_y)
+                    
+                    if 0 <= obs_mx < self.map_size and 0 <= obs_my < self.map_size:
+                        # Draw a small line segment to connect nearby points
+                        # This creates sharper edges
+                        if i > 0 and i < num_points - 1:
+                            prev_r = ranges[i-1]
+                            if prev_r < self.wall_distance:
+                                prev_angle = robot_theta + ((i-1) / num_points) * 2 * math.pi - math.pi
+                                prev_x = robot_x + prev_r * math.cos(prev_angle)
+                                prev_y = robot_y + prev_r * math.sin(prev_angle)
+                                prev_mx, prev_my = self.world_to_map(prev_x, prev_y)
+                                
+                                # Draw line between consecutive points
+                                cv2.line(self.wall_map, (prev_mx, prev_my), (obs_mx, obs_my), 255, 2)
+                        
+                        # Mark individual obstacle points
+                        self.obstacle_map[obs_my, obs_mx] = 255
+    
+    def process_lidar(self):
+        """Fast LiDAR processing for navigation"""
+        ranges = self.lidar.getRangeImage()
+        robot_x, robot_y, robot_theta = self.get_robot_pose()
+        
+        # Update mapping every 2 steps for performance
+        self.map_update_counter += 1
+        if self.map_update_counter >= 2:
+            self.fast_mapping(robot_x, robot_y, robot_theta, ranges)
+            self.map_update_counter = 0
+        
+        # Check for front obstacles
+        num_points = len(ranges)
+        front_start = int(num_points * 0.375)  # Wider front cone (90 degrees)
+        front_end = int(num_points * 0.625)
+        
+        front_ranges = ranges[front_start:front_end]
+        if len(front_ranges) > 0:
+            min_front = min(front_ranges)
+            self.obstacle_detected = min_front < self.obstacle_threshold
+            return min_front
+        
+        return float('inf')
