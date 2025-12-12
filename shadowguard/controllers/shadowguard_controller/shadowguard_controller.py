@@ -959,3 +959,53 @@ class ShadowGuardSLAM:
                 h = self.camera_display.getHeight()
                 for i in range(3):
                     self.camera_display.drawRectangle(i, i, w-2*i, h-2*i)
+
+    def run(self):
+        """Main control loop"""
+        print("\nShadowGuard Fast SLAM with RL Online")
+        print("Starting autonomous patrol with Q-learning...")
+        print("Press ESC in any window to close")
+        print("Press 'r' to toggle RL dashboard")
+        
+        # Initialize RL episode
+        self.rl_episode_start_time = self.robot.getTime()
+        
+        # Start display thread
+        display_thread = threading.Thread(target=self.display_map_thread, daemon=True)
+        display_thread.start()
+        
+        while self.robot.step(self.timestep) != -1:
+            # Process LiDAR (fast)
+            min_dist = self.process_lidar()
+            
+            # Detect intruder
+            intruder_seen = self.detect_intruder()
+            
+            # Control behavior
+            if self.intruder_detected:
+                self.track_intruder()
+            else:
+                self.autonomous_patrol()
+            
+            # Update camera display
+            self.update_camera_display()
+            
+            # Status output (less frequent)
+            if int(self.robot.getTime() * 10) % 150 == 0:
+                robot_x, robot_y, robot_theta = self.get_robot_pose()
+                status = "TRACKING" if self.intruder_detected else "PATROL"
+                rl_info = f"RL Action: {self.rl_agent.action_meanings[self.current_rl_action]}" if self.current_rl_action is not None else "RL: Choosing"
+                print(f"[{self.robot.getTime():.1f}s] {status} | Pos: ({robot_x:.1f}, {robot_y:.1f}) | {rl_info}")
+        
+        # Cleanup
+        self.show_map = False
+        self.show_rl = False
+        
+        # Save final Q-table
+        self.rl_agent.save_q_table()
+        print("Simulation ended. RL Q-table saved.")
+
+# Run controller
+if __name__ == "__main__":
+    controller = ShadowGuardSLAM()
+    controller.run()
