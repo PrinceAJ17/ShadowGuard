@@ -338,3 +338,128 @@ class ShadowGuardSLAM:
             return min_front
         
         return float('inf')
+        
+    def rl_get_reward(self):
+        """Calculate reward for RL agent"""
+        reward = 0
+        
+        # Base reward for staying alive
+        reward += 0.01
+        
+        # Reward for exploring new areas
+        robot_x, robot_y, _ = self.get_robot_pose()
+        cell_x = int((robot_x + 6) / 12 * 20)
+        cell_y = int((robot_y + 5) / 10 * 20)
+        
+        if (cell_x, cell_y) not in self.rl_visited_cells:
+            reward += 0.5  # Reward for exploring new cells
+            self.rl_visited_cells.add((cell_x, cell_y))
+        
+        # Reward for detecting intruder
+        if self.intruder_detected:
+            reward += 2.0
+        
+        # Penalty for being near obstacles (but collision avoidance handles this)
+        if self.obstacle_detected:
+            reward -= 0.1
+        
+        # Penalty for staying in same area too long
+        current_time = self.robot.getTime()
+        if current_time - self.last_rl_update_time > 30:  # 30 seconds
+            reward -= 0.2
+        
+        return reward
+    
+    def rl_choose_patrol_strategy(self, action):
+        """Apply RL-chosen patrol strategy"""
+        robot_x, robot_y, robot_theta = self.get_robot_pose()
+        
+        if action == 0:  # Explore Forward
+            self.wander_angle = robot_theta
+            self.robot_speed = 3.0
+            
+        elif action == 1:  # Turn Left
+            self.wander_angle = robot_theta + math.pi / 4
+            self.robot_speed = 2.5
+            
+        elif action == 2:  # Turn Right
+            self.wander_angle = robot_theta - math.pi / 4
+            self.robot_speed = 2.5
+            
+        elif action == 3:  # Move to Center
+            # Calculate angle to center of room
+            dx = 0 - robot_x
+            dy = 0 - robot_y
+            center_angle = math.atan2(dy, dx)
+            self.wander_angle = center_angle
+            self.robot_speed = 2.8
+            
+        elif action == 4:  # Check Corners
+            # Cycle through corners
+            corners = [(-5, -4), (-5, 4), (5, -4), (5, 4)]
+            corner_idx = int(self.robot.getTime() / 10) % 4
+            target_x, target_y = corners[corner_idx]
+            dx = target_x - robot_x
+            dy = target_y - robot_y
+            corner_angle = math.atan2(dy, dx)
+            self.wander_angle = corner_angle
+            self.robot_speed = 3.0
+            
+        elif action == 5:  # Slow Patrol
+            self.wander_angle = robot_theta + random.uniform(-0.3, 0.3)
+            self.robot_speed = 2.0
+        
+        self.rl_action_duration = random.randint(50, 150)  # Action duration in steps
+        self.last_rl_update_time = self.robot.getTime()
+    
+    def rl_update(self):
+        """Update RL agent based on current state"""
+        if self.intruder_detected:
+            return  # RL doesn't control during intruder tracking
+        
+        current_time = self.robot.getTime()
+        
+        # Get current state
+        robot_x, robot_y, robot_theta = self.get_robot_pose()
+        state = self.rl_agent.discretize_state(
+            robot_x, robot_y, robot_theta, 
+            self.intruder_detected, 
+            self.obstacle_detected
+        )
+        
+        # Check if we need a new action
+        if (self.current_rl_state is None or 
+            self.rl_action_duration <= 0 or
+            current_time - self.last_rl_update_time > 5):
+            
+            # If we had a previous state-action pair, update Q-value
+            if self.current_rl_state is not None and self.current_rl_action is not None:
+                reward = self.rl_get_reward()
+                self.rl_agent.update_q_value(
+                    self.current_rl_state, 
+                    self.current_rl_action, 
+                    reward, 
+                    state
+                )
+                self.rl_rewards_history.append(reward)
+                if len(self.rl_rewards_history) > 100:
+                    self.rl_rewards_history.pop(0)
+            
+            # Choose new action
+            self.current_rl_state = state
+            self.current_rl_action = self.rl_agent.choose_action(state)
+            self.rl_choose_patrol_strategy(self.current_rl_action)
+            
+            # Store Q-values for visualization
+            self.rl_q_values = self.rl_agent.q_table[state].tolist()
+            if len(self.rl_q_values) > 20:
+                self.rl_q_values = self.rl_q_values[:20]
+        
+        else:
+            self.rl_action_duration -= 1
+        
+        # Check if episode should end (e.g., after 2 minutes)
+        if current_time - self.rl_episode_start_time > 120:  # 2 minutes
+            self.rl_agent.end_episode()
+            self.rl_episode_start_time = current_time
+            self.rl_visited_cells.clear()
