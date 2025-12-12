@@ -577,3 +577,96 @@ class ShadowGuardSLAM:
                 self.trajectory.append((robot_x, robot_y))
                 if len(self.trajectory) > 500:
                     self.trajectory.pop(0)
+
+    def detect_intruder(self):
+        """Fast intruder detection"""
+        num_objects = self.camera.getRecognitionNumberOfObjects()
+        
+        if num_objects > 0:
+            objects = self.camera.getRecognitionObjects()
+            for obj in objects:
+                colors = obj.getColors()
+                try:
+                    r, g, b = colors[0], colors[1], colors[2]
+                    # Detect red/orange intruder
+                    if r > 0.6 and g < 0.4 and b < 0.4:
+                        position = obj.getPosition()
+                        robot_x, robot_y, robot_theta = self.get_robot_pose()
+                        
+                        # Convert to world coordinates
+                        local_x = position[0]
+                        local_y = position[1]
+                        
+                        intruder_x = robot_x + local_x * math.cos(robot_theta) - local_y * math.sin(robot_theta)
+                        intruder_y = robot_y + local_x * math.sin(robot_theta) + local_y * math.cos(robot_theta)
+                        
+                        with self.intruder_data_lock:
+                            self.intruder_detected = True
+                            self.intruder_position = (intruder_x, intruder_y)
+                            self.intruder_trajectory.append((intruder_x, intruder_y))
+                            if len(self.intruder_trajectory) > 100:
+                                self.intruder_trajectory.pop(0)
+                        
+                        # Alert if first detection
+                        if self.emitter:
+                            alert_msg = f"INTRUDER:{intruder_x:.1f}:{intruder_y:.1f}"
+                            self.emitter.send(alert_msg.encode('utf-8'))
+                            print(f"🚨 INTRUDER at ({intruder_x:.1f}, {intruder_y:.1f})")
+                        
+                        return True
+                except:
+                    continue
+        
+        # Reset if no longer detected
+        with self.intruder_data_lock:
+            self.intruder_detected = False
+        
+        return False
+    
+    def track_intruder(self):
+        """Track intruder while maintaining distance"""
+        with self.intruder_data_lock:
+            if not self.intruder_position or not self.intruder_detected:
+                return
+        
+        target_x, target_y = self.intruder_position
+        robot_x, robot_y, robot_theta = self.get_robot_pose()
+        
+        dx = target_x - robot_x
+        dy = target_y - robot_y
+        distance = math.sqrt(dx*dx + dy*dy)
+        target_angle = math.atan2(dy, dx)
+        
+        # Calculate angle difference
+        angle_diff = target_angle - robot_theta
+        while angle_diff > math.pi:
+            angle_diff -= 2 * math.pi
+        while angle_diff < -math.pi:
+            angle_diff += 2 * math.pi
+        
+        # Maintain 1.5m distance
+        desired_distance = 1.5
+        
+        if distance > desired_distance + 0.3:
+            # Approach
+            forward_speed = min(2.5, (distance - desired_distance) * 1.0)
+        elif distance < desired_distance - 0.3:
+            # Back up
+            forward_speed = -min(2.0, (desired_distance - distance) * 1.0)
+        else:
+            # Maintain distance
+            forward_speed = 0
+        
+        # Add turning to face intruder
+        angular_speed = 1.5 * angle_diff
+        
+        left_speed = forward_speed - angular_speed
+        right_speed = forward_speed + angular_speed
+        
+        # Clamp speeds
+        max_speed = 3.0
+        left_speed = max(-max_speed, min(max_speed, left_speed))
+        right_speed = max(-max_speed, min(max_speed, right_speed))
+        
+        self.left_motor.setVelocity(left_speed)
+        self.right_motor.setVelocity(right_speed)
