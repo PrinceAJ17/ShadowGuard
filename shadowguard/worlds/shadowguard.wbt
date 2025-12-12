@@ -1,0 +1,715 @@
+#VRML_SIM R2025a utf8
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/RectangleArena.proto"
+
+WorldInfo {
+  info [ "ShadowGuard Security Robot Patrol World" ]
+  title "ShadowGuard House Patrol"
+  basicTimeStep 16
+}
+
+Viewpoint {
+  orientation -0.5 0.5 0.7 1.9
+  position 2.5 -3.5 6.8
+}
+
+TexturedBackground {
+}
+
+TexturedBackgroundLight {
+}
+
+# Floor
+RectangleArena {
+  translation 0 0 0
+  floorSize 12 10
+  floorTileSize 1 1
+  wallHeight 0.01
+}
+
+# Walls - Creating house structure
+Solid {
+  translation 0 -5 1.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.9 0.9 0.8
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box { size 12 0.2 2.5 }
+    }
+  ]
+  name "wall_back"
+  boundingObject Box { size 12 0.2 2.5 }
+}
+
+Solid {
+  translation 0 5 1.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.9 0.9 0.8
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box { size 12 0.2 2.5 }
+    }
+  ]
+  name "wall_front"
+  boundingObject Box { size 12 0.2 2.5 }
+}
+
+Solid {
+  translation -6 0 1.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.9 0.9 0.8
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box { size 0.2 10 2.5 }
+    }
+  ]
+  name "wall_left"
+  boundingObject Box { size 0.2 10 2.5 }
+}
+
+Solid {
+  translation 6 0 1.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.9 0.9 0.8
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box { size 0.2 10 2.5 }
+    }
+  ]
+  name "wall_right"
+  boundingObject Box { size 0.2 10 2.5 }
+}
+
+# Sofa
+Solid {
+  translation -3.5 -3.5 0.3
+  rotation 0 0 1 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.3 0.4 0.6
+        roughness 0.8
+        metalness 0
+      }
+      geometry Box {
+        size 2 0.8 0.6
+      }
+    }
+  ]
+  name "sofa"
+  boundingObject Box {
+    size 2 0.8 0.6
+  }
+}
+
+# Coffee Table
+Solid {
+  translation -3.5 -2 0.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.4 0.25 0.1
+        roughness 0.6
+        metalness 0
+      }
+      geometry Box {
+        size 1.2 0.7 0.5
+      }
+    }
+  ]
+  name "coffee_table"
+  boundingObject Box {
+    size 1.2 0.7 0.5
+  }
+}
+
+# TV Stand
+Solid {
+  translation -5.3 -2 0.3
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.2 0.2 0.2
+        roughness 0.4
+        metalness 0.1
+      }
+      geometry Box {
+        size 0.4 1.5 0.6
+      }
+    }
+  ]
+  name "tv_stand"
+  boundingObject Box {
+    size 0.4 1.5 0.6
+  }
+}
+
+# Dining Table
+Solid {
+  translation -3.5 2.5 0.4
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.5 0.3 0.15
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box {
+        size 1.5 2 0.8
+      }
+    }
+  ]
+  name "dining_table"
+  boundingObject Box {
+    size 1.5 2 0.8
+  }
+}
+
+# Chair 1
+Solid {
+  translation -4.2 1.5 0.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.4 0.3 0.2
+        roughness 0.7
+        metalness 0
+      }
+      geometry Box {
+        size 0.4 0.4 0.5
+      }
+    }
+  ]
+  name "chair1"
+  boundingObject Box {
+    size 0.4 0.4 0.5
+  }
+}
+
+# Chair 2
+Solid {
+  translation -4.2 3.5 0.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.4 0.3 0.2
+        roughness 0.7
+        metalness 0
+      }
+      geometry Box {
+        size 0.4 0.4 0.5
+      }
+    }
+  ]
+  name "chair2"
+  boundingObject Box {
+    size 0.4 0.4 0.5
+  }
+}
+
+# Bed
+Solid {
+  translation 3.5 -3 0.3
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.8 0.9
+        roughness 0.9
+        metalness 0
+      }
+      geometry Box {
+        size 2 1.5 0.6
+      }
+    }
+  ]
+  name "bed"
+  boundingObject Box {
+    size 2 1.5 0.6
+  }
+}
+
+# Nightstand
+Solid {
+  translation 5 -3 0.25
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.45 0.3 0.15
+        roughness 0.6
+        metalness 0
+      }
+      geometry Box {
+        size 0.5 0.4 0.5
+      }
+    }
+  ]
+  name "nightstand"
+  boundingObject Box {
+    size 0.5 0.4 0.5
+  }
+}
+
+# Wardrobe
+Solid {
+  translation 5 -0.5 0.8
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.35 0.25 0.15
+        roughness 0.5
+        metalness 0
+      }
+      geometry Box {
+        size 0.6 1.2 1.6
+      }
+    }
+  ]
+  name "wardrobe"
+  boundingObject Box {
+    size 0.6 1.2 1.6
+  }
+}
+
+# Bookshelf
+Solid {
+  translation 3 3.5 0.8
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.4 0.25 0.1
+        roughness 0.6
+        metalness 0
+      }
+      geometry Box {
+        size 1.2 0.3 1.6
+      }
+    }
+  ]
+  name "bookshelf"
+  boundingObject Box {
+    size 1.2 0.3 1.6
+  }
+}
+
+# Kitchen Counter
+Solid {
+  translation 1.5 3.5 0.45
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.7 0.7 0.7
+        roughness 0.3
+        metalness 0.2
+      }
+      geometry Box {
+        size 2 0.6 0.9
+      }
+    }
+  ]
+  name "kitchen_counter"
+  boundingObject Box {
+    size 2 0.6 0.9
+  }
+}
+
+# ShadowGuard Robot - WITH GPS ADDED
+Robot {
+  translation 0 -4 0.08
+  rotation 0 0 1 1.5708
+  children [
+    # Body
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.1 0.1 0.15
+        roughness 0.3
+        metalness 0.7
+      }
+      geometry Cylinder { height 0.15 radius 0.15 }
+    }
+    
+    # Security Badge on top
+    Transform {
+      translation 0 0 0.08
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0 0.3 0.8
+            roughness 0.2
+            metalness 0.9
+            emissiveColor 0 0.2 0.5
+          }
+          geometry Cylinder { height 0.01 radius 0.08 }
+        }
+      ]
+    }
+    
+    # Camera mount
+    Transform {
+      translation 0 0 0.1
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.2 0.2 0.2
+            roughness 0.4
+            metalness 0.5
+          }
+          geometry Box { size 0.08 0.06 0.05 }
+        }
+      ]
+    }
+    
+    # RGB Camera
+    Camera {
+      translation 0.12 0 0.08
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.1 0.1 0.1
+            roughness 0.2
+            metalness 0.8
+          }
+          geometry Box { size 0.02 0.03 0.02 }
+        }
+      ]
+      name "rgb_camera"
+      fieldOfView 1.2
+      width 640
+      height 480
+      recognition Recognition {
+        maxObjects 10
+        maxRange 15
+      }
+    }
+    
+    # LiDAR
+    Lidar {
+      translation 0 0 0.12
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.2 0.2 0.3
+            roughness 0.3
+            metalness 0.6
+          }
+          geometry Cylinder { height 0.04 radius 0.03 }
+        }
+      ]
+      name "lidar"
+      horizontalResolution 512
+      fieldOfView 6.28319
+      numberOfLayers 1
+      near 0.1
+      minRange 0.1
+      maxRange 10
+    }
+    
+    # GPS - ADDED FOR MAPPING
+    GPS {
+      translation 0 0 0.08
+      name "gps"
+    }
+    
+    # Left Wheel
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 0
+        axis 0 1 0
+        anchor 0 0.12 -0.03
+      }
+      device [
+        RotationalMotor {
+          name "left_motor"
+          maxVelocity 10
+          maxTorque 10
+        }
+        PositionSensor {
+          name "left_sensor"
+        }
+      ]
+      endPoint Solid {
+        translation 0 0.12 -0.03
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.1 0.1 0.1
+              roughness 0.5
+              metalness 0.3
+            }
+            geometry Cylinder { height 0.03 radius 0.05 }
+          }
+        ]
+        name "left_wheel"
+        boundingObject Cylinder { height 0.03 radius 0.05 }
+        physics Physics {
+          density -1
+          mass 0.05
+        }
+      }
+    }
+    
+    # Right Wheel
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 0
+        axis 0 1 0
+        anchor 0 -0.12 -0.03
+      }
+      device [
+        RotationalMotor {
+          name "right_motor"
+          maxVelocity 10
+          maxTorque 10
+        }
+        PositionSensor {
+          name "right_sensor"
+        }
+      ]
+      endPoint Solid {
+        translation 0 -0.12 -0.03
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.1 0.1 0.1
+              roughness 0.5
+              metalness 0.3
+            }
+            geometry Cylinder { height 0.03 radius 0.05 }
+          }
+        ]
+        name "right_wheel"
+        boundingObject Cylinder { height 0.03 radius 0.05 }
+        physics Physics {
+          density -1
+          mass 0.05
+        }
+      }
+    }
+    
+    # Front Caster Wheel
+    Solid {
+      translation 0.08 0 -0.055
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.3 0.3 0.3
+            roughness 0.4
+            metalness 0.2
+          }
+          geometry Sphere { radius 0.025 }
+        }
+      ]
+      name "caster_front"
+      boundingObject Sphere { radius 0.025 }
+      physics Physics {
+        density -1
+        mass 0.005
+      }
+    }
+    
+    # Camera Display
+    Display {
+      translation 0 0 0.2
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance { baseColor 0 0 0 }
+          geometry Box { size 0.001 0.001 0.001 }
+        }
+      ]
+      name "camera_display"
+      width 320
+      height 240
+    }
+    
+    # Map Display
+    Display {
+      translation 0 0 0.25
+      rotation 0 0 1 0
+      children [
+        Shape {
+          appearance PBRAppearance { baseColor 0 0 0 }
+          geometry Box { size 0.001 0.001 0.001 }
+        }
+      ]
+      name "map_display"
+      width 400
+      height 400
+    }
+    Compass {
+      translation 0 0 0.08
+      name "compass"
+    }
+    Emitter {
+      name "emitter"
+      range 50
+      channel 1
+    }
+  ]
+  name "ShadowGuard"
+  boundingObject Cylinder { height 0.15 radius 0.15 }
+  physics Physics { density -1 mass 1 }
+  controller "shadowguard_controller"
+  supervisor TRUE
+  recognitionColors [ 0 0.3 0.8 ]
+}
+
+# INTRUDER Robot
+DEF INTRUDER_ROBOT Robot {
+  translation 3.5 2.5 0.08
+  rotation 0 0 1 0
+  children [
+    # Body
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.1
+        roughness 0.6
+        metalness 0.2
+        emissiveColor 0.3 0.05 0
+      }
+      geometry Box { size 0.25 0.25 0.35 }
+    }
+    
+    # Head/Top marker
+    Transform {
+      translation 0 0 0.22
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.3 0
+            roughness 0.4
+            metalness 0.3
+            emissiveColor 0.5 0.1 0
+          }
+          geometry Sphere { radius 0.08 }
+        }
+      ]
+    }
+    
+    # Warning symbol on body
+    Transform {
+      translation 0.13 0 0
+      rotation 0 1 0 1.5708
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 1 0
+            roughness 0.3
+            metalness 0
+            emissiveColor 0.3 0.3 0
+          }
+          geometry Cylinder { height 0.005 radius 0.06 }
+        }
+      ]
+    }
+    
+    # Left Wheel
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 0
+        axis 0 1 0
+        anchor -0.05 0.15 -0.125
+      }
+      device [
+        RotationalMotor {
+          name "intruder_left_motor"
+          maxVelocity 8
+          maxTorque 8
+        }
+      ]
+      endPoint Solid {
+        translation -0.05 0.15 -0.125
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.15 0.15 0.15
+              roughness 0.7
+              metalness 0.1
+            }
+            geometry Cylinder { height 0.04 radius 0.06 }
+          }
+        ]
+        name "intruder_left_wheel"
+        boundingObject Cylinder { height 0.04 radius 0.06 }
+        physics Physics { density -1 mass 0.06 }
+      }
+    }
+    
+    # Right Wheel
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 0
+        axis 0 1 0
+        anchor -0.05 -0.15 -0.125
+      }
+      device [
+        RotationalMotor {
+          name "intruder_right_motor"
+          maxVelocity 8
+          maxTorque 8
+        }
+      ]
+      endPoint Solid {
+        translation -0.05 -0.15 -0.125
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.15 0.15 0.15
+              roughness 0.7
+              metalness 0.1
+            }
+            geometry Cylinder { height 0.04 radius 0.06 }
+          }
+        ]
+        name "intruder_right_wheel"
+        boundingObject Cylinder { height 0.04 radius 0.06 }
+        physics Physics { density -1 mass 0.06 }
+      }
+    }
+    
+    # Front Caster
+    Solid {
+      translation 0.1 0 -0.15
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.4 0.2 0.1
+            roughness 0.5
+            metalness 0.1
+          }
+          geometry Sphere { radius 0.03 }
+        }
+      ]
+      name "intruder_caster"
+      boundingObject Sphere { radius 0.03 }
+      physics Physics { density -1 mass 0.015 }
+    }
+    Receiver {
+      name "receiver"
+      channel 1
+    }
+  ]
+  name "Intruder"
+  boundingObject Box { size 0.25 0.25 0.35 }
+  physics Physics { density -1 mass 1.2 }
+  controller "intruder_controller"
+  recognitionColors [ 0.8 0.2 0.1 ]
+}
