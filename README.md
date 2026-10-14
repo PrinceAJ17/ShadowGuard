@@ -18,7 +18,7 @@ ShadowGuard is an intelligent security robot system that combines Fast SLAM (Sim
 * Real-time trajectory and map visualization
 
 ### 2. Reinforcement Learning Patrol
-* Q-learning agent with 4×4×4×2×2 state space (512 states)
+* Q-learning agent with 4×4×4×2×2 state space (256 states)
 * 6 distinct patrol strategies:
   1. Explore Forward
   2. Turn Left
