@@ -86,7 +86,7 @@ pip install -r requirements.txt
 
 ### 4. Run the Simulation
 1. Open Webots
-2. File → Open World → Navigate to `worlds/house_patrol.wbt`
+2. File → Open World → Navigate to `shadowguard/worlds/shadowguard.wbt`
 3. Click the "Play" button (▶) to start simulation
 4. OpenCV windows will appear showing:
    * SLAM Map with robot position and mapping
@@ -95,13 +95,13 @@ pip install -r requirements.txt
 ## Quick Start Commands
 ```bash
 # Clone or download the project
-git clone <repository-url>
-cd ShadowGuard-Security-Robot
+git clone https://github.com/PrinceAJ17/ShadowGuard.git
+cd ShadowGuard
 
 # Install dependencies
 pip install numpy opencv-python
 
 # Open Webots and load the world file
 # Or run from command line (if Webots is in PATH):
-webots worlds/house_patrol.wbt
+webots shadowguard/worlds/shadowguard.wbt
 ```
