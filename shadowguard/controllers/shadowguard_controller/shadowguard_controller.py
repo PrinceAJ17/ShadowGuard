@@ -601,6 +601,7 @@ class ShadowGuardSLAM:
                         intruder_y = robot_y + local_x * math.sin(robot_theta) + local_y * math.cos(robot_theta)
                         
                         with self.intruder_data_lock:
+                            first_sighting = not self.intruder_detected
                             self.intruder_detected = True
                             self.intruder_position = (intruder_x, intruder_y)
                             self.intruder_trajectory.append((intruder_x, intruder_y))
@@ -608,7 +609,7 @@ class ShadowGuardSLAM:
                                 self.intruder_trajectory.pop(0)
                         
                         # Alert if first detection
-                        if self.emitter:
+                        if self.emitter and first_sighting:
                             alert_msg = f"INTRUDER:{intruder_x:.1f}:{intruder_y:.1f}"
                             self.emitter.send(alert_msg.encode('utf-8'))
                             print(f"🚨 INTRUDER at ({intruder_x:.1f}, {intruder_y:.1f})")

@@ -61,7 +61,7 @@ class IntruderController:
         """Check if detected by security"""
         if self.receiver and self.receiver.getQueueLength() > 0:
             message = self.receiver.getString()
-            if "INTRUDER_DETECTED" in message:
+            if message.startswith("INTRUDER:"):
                 print("Detected by security! Changing direction...")
                 # Quick evasive turn
                 self.left_motor.setVelocity(-self.base_speed * 1.5)
